@@ -1,0 +1,9 @@
+﻿@page
+@model ASP.FeedApp.RazorPages.Pages.LoginModel
+
+<form method="post">
+    <input type="text" asp-for="UserName" placeholder="UserName" />
+    <input type="password" asp-for="Password" placeholder="Password" />
+    <button type="submit">Login</button>
+    <p>@Model.Message</p>
+</form>

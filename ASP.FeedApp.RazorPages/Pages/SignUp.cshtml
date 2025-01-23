@@ -1,0 +1,9 @@
+﻿@page
+@model ASP.FeedApp.RazorPages.Pages.SignUpModel
+
+<form method="post">
+    <input type="text" asp-for="User.UserName" placeholder="UserName" />
+    <input type="email" asp-for="User.Email" placeholder="Email" />
+    <input type="password" asp-for="User.Password" placeholder="Password" />
+    <button type="submit">Sign Up</button>
+</form>
