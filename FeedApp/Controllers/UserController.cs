@@ -17,6 +17,26 @@ namespace ASP.FeedApp.API.Controllers
             _mongoDbService = mongoDbService;
         }
 
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] Users user)
+        {
+            var collection = _mongoDbService.GetUsersCollection();
+
+            var existingUser = await collection
+                .Find(u => u.UserName == user.UserName)
+                .FirstOrDefaultAsync();
+
+            if (existingUser == null || !BCrypt.Net.BCrypt.Verify(user.Password, existingUser.Password))
+            {
+                return Unauthorized(new { message = "Invalid credentials" });
+            }
+
+            return Ok(new { message = "Login successful" });
+        }
+
+
+
         [HttpPost("signup")]
         public async Task<IActionResult> SignUp([FromBody] Users user)
         {
