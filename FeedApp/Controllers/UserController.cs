@@ -1,60 +1,56 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using MongoDB.Driver;
 using ASP.FeedApp.API.Models;
 using ASP.FeedApp.API.Services;
-using BCrypt.Net;
+using System.Threading.Tasks;
 
 namespace ASP.FeedApp.API.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/users")]
     public class UserController : ControllerBase
     {
-        private readonly MongoDbService _mongoDbService;
+        private readonly UserService _userService;
 
-        public UserController(MongoDbService mongoDbService)
+        public UserController(UserService userService)
         {
-            _mongoDbService = mongoDbService;
+            _userService = userService;
         }
 
-
         [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] Users user)
+        public async Task<IActionResult> Login([FromBody] UserLoginDto userDto)
         {
-            var collection = _mongoDbService.GetUsersCollection();
-
-            var existingUser = await collection
-                .Find(u => u.UserName == user.UserName)
-                .FirstOrDefaultAsync();
-
-            if (existingUser == null || !BCrypt.Net.BCrypt.Verify(user.Password, existingUser.Password))
+            var user = await _userService.GetUserByUsernameAsync(userDto.Username);
+            if (user == null || !BCrypt.Net.BCrypt.Verify(userDto.Password, user.Password))
             {
                 return Unauthorized(new { message = "Invalid credentials" });
             }
 
-            return Ok(new { message = "Login successful" });
+            return Ok(new { message = "Login successful", userId = user.Id });
         }
 
-
-
         [HttpPost("signup")]
-        public async Task<IActionResult> SignUp([FromBody] Users user)
+        public async Task<IActionResult> SignUp([FromBody] UserRegisterDto userDto)
         {
-            var collection = _mongoDbService.GetUsersCollection();
-
-            var existingUser = await collection.Find(u => u.UserName == user.UserName).FirstOrDefaultAsync();
+            var existingUser = await _userService.GetUserByUsernameAsync(userDto.Username);
             if (existingUser != null)
             {
                 return BadRequest(new { message = "User already exists" });
             }
 
-            user.Id = await _mongoDbService.GetNextSequenceValue("Users");
-
-            user.Password = BCrypt.Net.BCrypt.HashPassword(user.Password);
-
-            await collection.InsertOneAsync(user);
-
-            return Ok(new { message = "User created successfully", userId = user.Id });
+            var newUser = await _userService.CreateUserAsync(userDto.Username, userDto.Password);
+            return Ok(new { message = "User created successfully", userId = newUser.Id });
         }
     }
+    public class UserLoginDto
+    {
+        public string Username { get; set; } = null!;
+        public string Password { get; set; } = null!;
+    }
+
+    public class UserRegisterDto
+    {
+        public string Username { get; set; } = null!;
+        public string Password { get; set; } = null!;
+    }
+
 }

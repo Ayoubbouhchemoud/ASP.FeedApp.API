@@ -8,10 +8,19 @@ namespace ASP.FeedApp.API.Models
         [BsonId]
         public int Id { get; set; }
 
-        public string UserName { get; set; }
+        [BsonElement("username")]
+        public string Username { get; set; } = null!;
 
-        public string Email { get; set; }
+        [BsonElement("password")]
+        public string Password { get; set; } = null!;
 
-        public string Password { get; set; }
+        public void HashPassword()
+        {
+            Password = BCrypt.Net.BCrypt.HashPassword(Password);
+        }
+        public bool VerifyPassword(string password)
+        {
+            return BCrypt.Net.BCrypt.Verify(password, Password);
+        }
     }
 }

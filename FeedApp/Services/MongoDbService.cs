@@ -1,4 +1,5 @@
 ﻿using MongoDB.Driver;
+using Microsoft.Extensions.Configuration;
 using ASP.FeedApp.API.Models;
 
 namespace ASP.FeedApp.API.Services
@@ -9,8 +10,16 @@ namespace ASP.FeedApp.API.Services
 
         public MongoDbService(IConfiguration configuration)
         {
-            var client = new MongoClient(configuration.GetConnectionString("MongoDB"));
-            _database = client.GetDatabase(configuration["DatabaseName"]);
+            var connectionString = configuration.GetSection("MongoDB:ConnectionString").Value;
+            var databaseName = configuration.GetSection("MongoDB:DatabaseName").Value;
+
+            if (string.IsNullOrEmpty(connectionString) || string.IsNullOrEmpty(databaseName))
+            {
+                throw new ArgumentNullException("MongoDB configuration is missing or incorrect.");
+            }
+
+            var client = new MongoClient(connectionString);
+            _database = client.GetDatabase(databaseName);
         }
 
         public IMongoCollection<Users> GetUsersCollection()
@@ -32,11 +41,12 @@ namespace ASP.FeedApp.API.Services
             var options = new FindOneAndUpdateOptions<Counter>
             {
                 ReturnDocument = ReturnDocument.After,
-                IsUpsert = true 
+                IsUpsert = true
             };
 
             var counter = await countersCollection.FindOneAndUpdateAsync(filter, update, options);
             return counter.SequenceValue;
         }
+
     }
 }
