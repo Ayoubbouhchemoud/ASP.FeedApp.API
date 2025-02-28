@@ -2,14 +2,17 @@
 import { ref } from "vue";
 import axios from "axios";
 import { useRouter } from "vue-router";
-import UnknownProfile from "@/app/icons/UnknownProfile.vue";
 
 const username = ref("");
 const password = ref("");
 const errorMessage = ref("");
+const successMessage = ref("");
 const router = useRouter();
 
 const submitForm = async () => {
+  errorMessage.value = ""; 
+  successMessage.value = "";
+
   try {
     console.log("Attempting to log in...");
 
@@ -25,34 +28,31 @@ const submitForm = async () => {
     );
 
     if (response.status === 200 && response.data.token) {
-      console.log("Login successful!", response.data);
+      console.log("Login successful:", response.data);
 
       localStorage.setItem("token", response.data.token);
 
-      alert("Login successful! Welcome, " + username.value);
-
-      router.push("/");
+      successMessage.value = "Login successful! Redirecting...";
+      
+      setTimeout(() => {
+        router.push("/");
+      }, 2000);
     } else {
       errorMessage.value = "Unexpected server response.";
     }
   } catch (error) {
-    console.error("Error during login:", error);
+    console.error("Login error:", error);
 
     if (error.response) {
-      errorMessage.value = error.response.data?.message || "Login error.";
+      errorMessage.value = error.response.data?.message || "Login failed.";
     } else if (error.request) {
-      errorMessage.value = "The server is not responding. Please check your connection.";
+      errorMessage.value = "The server is not responding. Check your connection.";
     } else {
       errorMessage.value = "An unknown error occurred.";
     }
   }
 };
 </script>
-
-
-
-
-
 
 <template>
   <div class="form-container">
