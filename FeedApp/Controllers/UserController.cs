@@ -7,6 +7,8 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.ComponentModel.DataAnnotations;
+using ASP.FeedApp.API.Validators;
 
 namespace ASP.FeedApp.API.Controllers
 {
@@ -24,26 +26,22 @@ namespace ASP.FeedApp.API.Controllers
 
         }
 
+
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] UserLoginDto userDto)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             var user = await _userService.GetUserByUsernameAsync(userDto.Username);
-
-            if (user == null)
+            if (user == null || !BCrypt.Net.BCrypt.Verify(userDto.Password, user.Password))
             {
-                return Unauthorized(new { message = "Identifiants incorrects" });
+                return Unauthorized(new { message = "Invalid username or password." });
             }
 
-            bool isPasswordValid = BCrypt.Net.BCrypt.Verify(userDto.Password, user.Password);
-
-            if (!isPasswordValid)
-            {
-                return Unauthorized(new { message = "Identifiants incorrects" });
-            }
-
-            Console.WriteLine("Login successful for: " + userDto.Username);
-            
-                        var jwtSettings = _configuration.GetSection("JwtSettings");
+            var jwtSettings = _configuration.GetSection("JwtSettings");
             var secretKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]));
             var credentials = new SigningCredentials(secretKey, SecurityAlgorithms.HmacSha256);
 
@@ -57,20 +55,26 @@ namespace ASP.FeedApp.API.Controllers
                 issuer: jwtSettings["Issuer"],
                 audience: jwtSettings["Audience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddHours(2),
+                expires: DateTime.UtcNow.AddDays(1),
                 signingCredentials: credentials
             );
 
             var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
 
-            return Ok(new { token = tokenString, message = "Connection successful" });
+            return Ok(new { token = tokenString, message = "Login successful" });
         }
-
-
 
         [HttpPost("signup")]
         public async Task<IActionResult> SignUp([FromBody] UserRegisterDto userDto)
         {
+            var validator = new UserRegisterValidator();
+            var validationResult = validator.Validate(userDto);
+
+            if (!validationResult.IsValid)
+            {
+                return BadRequest(new { message = "Validation failed.", errors = validationResult.Errors });
+            }
+
             var existingUser = await _userService.GetUserByUsernameAsync(userDto.Username);
             if (existingUser != null)
             {
@@ -80,17 +84,30 @@ namespace ASP.FeedApp.API.Controllers
             var newUser = await _userService.CreateUserAsync(userDto.Username, userDto.Password);
             return Ok(new { message = "User created successfully", userId = newUser.Id });
         }
-    }
-    public class UserLoginDto
-    {
-        public string Username { get; set; } = null!;
-        public string Password { get; set; } = null!;
-    }
 
-    public class UserRegisterDto
-    {
-        public string Username { get; set; } = null!;
-        public string Password { get; set; } = null!;
-    }
 
+        public class UserLoginDto
+        {
+
+            [Required(ErrorMessage = "Username is required.")]
+            [MinLength(3, ErrorMessage = "Username must be at least 3 characters.")]
+            public string Username { get; set; } = null!;
+
+
+            [Required(ErrorMessage = "Password is required.")]
+            [MinLength(6, ErrorMessage = "Password must be at least 6 characters.")]
+            public string Password { get; set; } = null!;
+        }
+
+        public class UserRegisterDto
+        {
+            [Required(ErrorMessage = "Username is required.")]
+            [MinLength(3, ErrorMessage = "Username must be at least 3 characters.")]
+            public string Username { get; set; } = null!;
+
+            [Required(ErrorMessage = "Password is required.")]
+            [MinLength(6, ErrorMessage = "Password must be at least 6 characters.")]
+            public string Password { get; set; } = null!;
+        }
+    }
 }
