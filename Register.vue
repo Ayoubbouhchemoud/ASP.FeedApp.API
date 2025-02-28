@@ -10,11 +10,50 @@ const formData = ref({
 });
 
 const errorMessage = ref("");
+const successMessage = ref("");
 const router = useRouter();
 
+const validateUsername = (username) => {
+  if (/^\d/.test(username)) {
+    return "Username cannot start with a number.";
+  }
+  if (/\s/.test(username)) {
+    return "Username cannot contain spaces.";
+  }
+  return "";
+};
+
+const validatePassword = (password) => {
+  if (password.length < 8) {
+    return "Password must be at least 8 characters.";
+  }
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    return "Password must contain at least one special character.";
+  }
+  if (!/[a-zA-Z]/.test(password)) {
+    return "Password must contain at least one letter.";
+  }
+  return "";
+};
+
 const submitRegistration = async () => {
+  errorMessage.value = ""; // Réinitialiser l'erreur
+  successMessage.value = ""; // Réinitialiser le succès
+
+  let usernameError = validateUsername(formData.value.username);
+  if (usernameError) {
+    errorMessage.value = usernameError;
+    return;
+  }
+
+  let passwordError = validatePassword(formData.value.password);
+  if (passwordError) {
+    errorMessage.value = passwordError;
+    return;
+  }
+
   if (formData.value.password !== formData.value.passwordCheck) {
-    errorMessage.value = "Passwords do not match!";
+    errorMessage.value = "Passwords do not match.";
     return;
   }
 
@@ -31,22 +70,25 @@ const submitRegistration = async () => {
     );
 
     console.log("Registration successful:", response.data);
+    successMessage.value = "Registration successful! You can now log in.";
 
-    alert("Registration successful! Welcome, " + formData.value.username);
-
-    errorMessage.value = "";
-
-    router.push("/login");
+    // Rediriger vers la page de connexion après 2 secondes
+    setTimeout(() => {
+      router.push("/login");
+    }, 2000);
   } catch (error) {
-    console.error("Error during registration:", error.response?.data?.message || error.message);
-    errorMessage.value = error.response?.data?.message || "Registration error.";
+    console.error("Registration error:", error.response?.data?.message || error.message);
+
+    if (error.response?.data?.errors) {
+      errorMessage.value = Object.values(error.response.data.errors)
+        .flat()
+        .join("\n");
+    } else {
+      errorMessage.value = error.response?.data?.message || "Registration failed.";
+    }
   }
 };
 </script>
-
-
-
-
 
 <template>
   <div class="form-container">
